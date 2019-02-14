@@ -18,6 +18,8 @@
 * along with ORB-SLAM. If not, see <http://www.gnu.org/licenses/>.
 */
 
+// revised by ian
+
 #include<iostream>
 #include<fstream>
 #include<ros/ros.h>
@@ -52,12 +54,19 @@ int main(int argc, char **argv)
             "This is free software, and you are welcome to redistribute it" << endl <<
             "under certain conditions. See LICENSE.txt." << endl;
 
-    if(argc != 3)
+    if(argc != 5)
     {
-        cerr << endl << "Usage: rosrun ORB_SLAM ORB_SLAM path_to_vocabulary path_to_settings (absolute or relative to package directory)" << endl;
+        cerr << endl << "Usage: rosrun ORB_SLAM ORB_SLAM path_to_vocabulary path_to_settings " 
+        	<< "loop_closing(0 or 1) outputPrefix" << endl 
+        	<< "       paths are absolute or relative to package directory" << endl;
         ros::shutdown();
         return 1;
     }
+    
+    // Get whether enable loop closing
+    bool enableLoopClosing = (atoi(argv[3]) != 0);
+    // Output file path relative to ORB_SLAM and prefix of filename (dataset name?)
+    std::string outputPrefix = ros::package::getPath("ORB_SLAM") + std::string("/../output/") + argv[4];
 
     // Load Settings and Check
     string strSettingsFile = ros::package::getPath("ORB_SLAM")+"/"+argv[2];
@@ -73,21 +82,6 @@ int main(int argc, char **argv)
     //Create Frame Publisher for image_view
     ORB_SLAM::FramePublisher FramePub;
 
-    //Load ORB Vocabulary
-   /* Old version to load vocabulary using cv::FileStorage
-    string strVocFile = ros::package::getPath("ORB_SLAM")+"/"+argv[1];
-    cout << endl << "Loading ORB Vocabulary. This could take a while." << endl;
-    cv::FileStorage fsVoc(strVocFile.c_str(), cv::FileStorage::READ);
-    if(!fsVoc.isOpened())
-    {
-        cerr << endl << "Wrong path to vocabulary. Path must be absolut or relative to ORB_SLAM package directory." << endl;
-        ros::shutdown();
-        return 1;
-    }
-    ORB_SLAM::ORBVocabulary Vocabulary;
-    Vocabulary.load(fsVoc);
-    */
-    
     // New version to load vocabulary from text file "Data/ORBvoc.txt". 
     // If you have an own .yml vocabulary, use the function
     // saveToTextFile in Thirdparty/DBoW2/DBoW2/TemplatedVocabulary.h
@@ -135,12 +129,14 @@ int main(int argc, char **argv)
     //Set pointers between threads
     Tracker.SetLocalMapper(&LocalMapper);
     Tracker.SetLoopClosing(&LoopCloser);
+    Tracker.SetOutputPrefix(outputPrefix);
 
     LocalMapper.SetTracker(&Tracker);
     LocalMapper.SetLoopCloser(&LoopCloser);
 
     LoopCloser.SetTracker(&Tracker);
     LoopCloser.SetLocalMapper(&LocalMapper);
+    LoopCloser.SetEnable(enableLoopClosing);
 
     //This "main" thread will show the current processed frame and publish the map
     float fps = fsSettings["Camera.fps"];
@@ -158,15 +154,12 @@ int main(int argc, char **argv)
     }
 
     // Save keyframe poses at the end of the execution
-    ofstream f;
-
     vector<ORB_SLAM::KeyFrame*> vpKFs = World.GetAllKeyFrames();
     sort(vpKFs.begin(),vpKFs.end(),ORB_SLAM::KeyFrame::lId);
 
     cout << endl << "Saving Keyframe Trajectory to KeyFrameTrajectory.txt" << endl;
-    string strFile = ros::package::getPath("ORB_SLAM")+"/"+"KeyFrameTrajectory.txt";
-    f.open(strFile.c_str());
-    f << fixed;
+    string strFile = outputPrefix + "_KFtraj.txt";
+	FILE* fp = fopen(strFile.c_str(), "w");
 
     for(size_t i=0; i<vpKFs.size(); i++)
     {
@@ -178,11 +171,11 @@ int main(int argc, char **argv)
         cv::Mat R = pKF->GetRotation().t();
         vector<float> q = ORB_SLAM::Converter::toQuaternion(R);
         cv::Mat t = pKF->GetCameraCenter();
-        f << setprecision(6) << pKF->mTimeStamp << setprecision(7) << " " << t.at<float>(0) << " " << t.at<float>(1) << " " << t.at<float>(2)
-          << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
-
+        
+		fprintf(fp, "%ld %.7f %.7f %.7f ", pKF->mnFrameId, t.at<float>(0), t.at<float>(1), t.at<float>(2) );
+		fprintf(fp, "%.7f %.7f %.7f %.7f\n", q[0], q[1], q[2], q[3]);
     }
-    f.close();
+	fclose(fp);
 
     ros::shutdown();
 

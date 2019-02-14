@@ -21,6 +21,8 @@
 #ifndef TRACKING_H
 #define TRACKING_H
 
+// revised by ian
+
 #include<opencv2/core/core.hpp>
 #include<opencv2/features2d/features2d.hpp>
 #include<sensor_msgs/Image.h>
@@ -66,6 +68,7 @@ public:
     void SetLocalMapper(LocalMapping* pLocalMapper);
     void SetLoopClosing(LoopClosing* pLoopClosing);
     void SetKeyFrameDatabase(KeyFrameDatabase* pKFDB);
+    void SetOutputPrefix(std::string prefix);
 
     // This is the main function of the Tracking Thread
     void Run();
@@ -84,7 +87,6 @@ public:
     std::vector<cv::Point2f> mvbPrevMatched;
     std::vector<cv::Point3f> mvIniP3D;
     Frame mInitialFrame;
-
 
     void CheckResetByPublishers();
 
@@ -113,7 +115,9 @@ protected:
 
     bool NeedNewKeyFrame();
     void CreateNewKeyFrame();
-
+    
+    void WriteCurrentPose(int id, const cv::Mat Tcw);
+    
 
     //Other Thread Pointers
     LocalMapping* mpLocalMapper;
@@ -180,6 +184,9 @@ protected:
 
     // Transfor broadcaster (for visualization in rviz)
     tf::TransformBroadcaster mTfBr;
+    
+    // output prefix
+    std::string outputFile;
 };
 
 } //namespace ORB_SLAM

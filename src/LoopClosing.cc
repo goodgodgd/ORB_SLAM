@@ -18,6 +18,8 @@
 * along with ORB-SLAM. If not, see <http://www.gnu.org/licenses/>.
 */
 
+// revised by ian
+
 #include "LoopClosing.h"
 
 #include "Sim3Solver.h"
@@ -63,15 +65,19 @@ void LoopClosing::Run()
         // Check if there are keyframes in the queue
         if(CheckNewKeyFrames())
         {
+        	if(detectEnable == false)
+        		continue;
+			
             // Detect loop candidates and check covisibility consistency
             if(DetectLoop())
             {
-               // Compute similarity transformation [sR|t]
-               if(ComputeSim3())
-               {
-                   // Perform loop fusion and pose graph optimization
-                   CorrectLoop();
-               }
+            	std::cout << "Loop closing detected!!" << std::endl;
+				// Compute similarity transformation [sR|t]
+				if(ComputeSim3())
+				{
+				    // Perform loop fusion and pose graph optimization
+				    CorrectLoop();
+				}
             }
         }
 

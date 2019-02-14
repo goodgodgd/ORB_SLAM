@@ -18,6 +18,8 @@
 * along with ORB-SLAM. If not, see <http://www.gnu.org/licenses/>.
 */
 
+// revised by ian
+
 #include "Tracking.h"
 #include<ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
@@ -36,6 +38,8 @@
 #include<iostream>
 #include<fstream>
 
+#include <stdio.h>
+#include "Converter.h"
 
 using namespace std;
 
@@ -243,6 +247,9 @@ void Tracking::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         // If we have an initial estimation of the camera pose and matching. Track the local map.
         if(bOK)
             bOK = TrackLocalMap();
+        
+        if(bOK)
+	        WriteCurrentPose(mCurrentFrame.mnId, mCurrentFrame.mTcw);
 
         // If tracking were good, check if we insert a keyframe
         if(bOK)
@@ -1091,6 +1098,26 @@ void Tracking::CheckResetByPublishers()
         }
         r.sleep();
     }
+}
+
+void Tracking::SetOutputPrefix(std::string prefix)
+{
+	outputFile = prefix + "_FullTraj.txt";
+	FILE* fp = fopen(outputFile.c_str(), "w");
+	fclose(fp);
+}
+
+void Tracking::WriteCurrentPose(int id, const cv::Mat Tcw)
+{
+	FILE* fp = fopen(outputFile.c_str(), "a+");
+	if(fp)
+	{
+		cv::Mat R = Tcw.rowRange(0,3).colRange(0,3).clone();
+		vector<float> q = ORB_SLAM::Converter::toQuaternion(R);
+		fprintf(fp, "%d %.7f %.7f %.7f ", id, Tcw.at<float>(0, 3), Tcw.at<float>(1, 3), Tcw.at<float>(2, 3));
+		fprintf(fp, "%.7f %.7f %.7f %.7f\n", q[0], q[1], q[2], q[3]);
+		fclose(fp);
+	}
 }
 
 } //namespace ORB_SLAM

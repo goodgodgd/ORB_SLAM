@@ -21,6 +21,8 @@
 #ifndef LOOPCLOSING_H
 #define LOOPCLOSING_H
 
+// revised by ian
+
 #include "KeyFrame.h"
 #include "LocalMapping.h"
 #include "Map.h"
@@ -55,13 +57,15 @@ public:
     void SetTracker(Tracking* pTracker);
 
     void SetLocalMapper(LocalMapping* pLocalMapper);
+    
+    void SetEnable(bool enable) { detectEnable = enable; }
 
     void Run();
 
     void InsertKeyFrame(KeyFrame *pKF);
 
     void RequestReset();
-
+    
 protected:
 
     bool CheckNewKeyFrames();
@@ -108,6 +112,8 @@ protected:
     double mScale_cw;
 
     long unsigned int mLastLoopKFid;
+    
+    bool detectEnable;
 };
 
 } //namespace ORB_SLAM
